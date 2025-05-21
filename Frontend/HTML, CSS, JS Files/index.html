@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Dumper Truck Maintenance</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" type="module"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .temp-button {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #28a745;
+            color: white;
+            padding: 15px 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .temp-button:hover {
+            background-color: #218838;
+        }
+
+        .login-container {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+            text-align: center;
+            width: 300px;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        h2 {
+            font-family: 'BatmanFont', sans-serif;
+            color: #FFD700;
+        }
+
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            outline: none;
+            background: #222;
+            color: #fff;
+        }
+
+        button {
+            background-color: #FFD700;
+            color: black;
+            padding: 10px;
+            width: 100%;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background-color: #FFC107;
+        }
+
+        a {
+            color: #FFD700;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1 class="batman-font">Dumper Truck Maintenance</h1>
+    <button class="temp-button" onclick="tempAccess()">Temporary Access</button>
+</header>
+
+
+
+<main>
+    <div class="login-container">
+        <h2>Login</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p>Don't have an account? <a href="register.html">Register here</a></p>
+    </div>
+</main>
+
+<footer>
+    <p>&copy; 2025 Dumper Truck Maintenance - Secure Login System</p>
+</footer>
+
+<script>
+    async function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        if (!email || !password) {
+            alert("Please enter email and password!");
+            return;
+        }
+
+        const userData = { email, password };
+
+        try {
+            const response = await fetch('http://localhost:8080/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userData)
+            });
+
+            if (response.ok) {
+                alert("Login successful! Redirecting...");
+                window.location.href = 'fyp.html';
+            } else {
+                alert("Invalid credentials! Try again.");
+            }
+
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Error connecting to server!");
+        }
+    }
+
+    function tempAccess() {
+        window.location.href = 'fyp.html';
+    }
+</script>
+
+</body>
+</html>

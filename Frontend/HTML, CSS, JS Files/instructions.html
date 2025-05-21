@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance Instructions</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #1c1c1c; color: #ddd; }
+    .navbar {
+    background: #222;
+    display: flex;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    overflow-x: auto;   /* Allow horizontal scroll on small screens */
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
+    padding: 15px;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+    z-index: 1003;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    scrollbar-width: none; /* Hide scrollbar in Firefox */
+}
+
+/* Hide scrollbar in Chrome/Safari */
+.navbar::-webkit-scrollbar {
+    display: none;
+}
+        .batman-font {
+            color: #FFD700; /* Yellow color for the h1 element */
+            font-family: 'Arial', sans-serif; /* Fallback font, adjust as needed */
+            text-align: center;
+            margin-top: 50px;
+            font-size: 2.2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+.navbar a {
+    color: #FFD700;
+    text-decoration: none;
+    font-size: 18px;
+    padding: 10px 15px;
+    transition: 0.3s;
+    white-space: nowrap; /* Prevent text wrapping */
+    flex-shrink: 0;       /* Prevent links from shrinking */
+}
+
+.navbar a:hover {
+    background: #FFC107;
+    color: black;
+    border-radius: 5px;
+}
+
+        header { margin-top: 300px; text-align: center; } /* Increased margin-top to avoid overlap */
+        main { padding: 20px; max-width: 800px; margin: auto; }
+        .threshold-box { background: #222; padding: 15px; margin: 15px 0; border-radius: 8px; box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+        h2, h3 { color: #ffd700; }
+        footer { text-align: center; padding: 15px; background: #111; margin-top: 20px; }
+    </style>
+</head>
+<body class="dark-theme">
+<nav class="navbar">
+    <a href="fyp.html">Dashboard</a>
+    <a href="model.html">3D Model</a>
+    <a href="instructions.html">Instructions</a>
+    <a href="analysis.html">Analysis</a>
+    <a href="data.html">TKPH Calculator</a>
+    <a href="output.html">Output</a>
+</nav>
+<header>
+    <h1 class="batman-font">Tyre Maintenance Guide</h1>
+</header>
+<main>
+    <section class="threshold-box">
+        <h2>🚛 Tyre Pressure Guidelines</h2>
+        <p><strong>Optimal Pressure:</strong> 90 - 110 PSI</p>
+        <p><strong>Low Pressure Warning:</strong> Below 85 PSI (⚠️ Risk of damage)</p>
+        <p><strong>High Pressure Warning:</strong> Above 115 PSI (⚠️ Risk of explosion)</p>
+    </section>
+    <section class="threshold-box">
+        <h2>🌡️ Temperature Limits</h2>
+        <p><strong>Safe Operating Range:</strong> 20°C - 80°C</p>
+        <p><strong>Critical Overheat:</strong> Above 100°C (⚠️ Immediate attention needed)</p>
+    </section>
+    <section class="threshold-box">
+        <h2>📍 GPS Monitoring</h2>
+        <p>Ensure the dumper truck follows designated mining paths to avoid rough terrains that can impact tyre health.</p>
+    </section>
+</main>
+<footer>
+    <p>&copy; 2025 Dumper Truck Maintenance - "Even the Batmobile needs maintenance!" 🦧</p>
+</footer>
+</body>
+</html>

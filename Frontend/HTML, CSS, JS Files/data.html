@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKPH Calculator - Dumper Truck Maintenance</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            padding-top: 70px; /* Add this line */
+        }
+
+        .container {
+            margin-top: 30px;  /* Reduce this a bit, since body now has padding */
+            background-color: #222;
+            padding: 30px;
+            border-radius: 10px;
+            width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+.navbar {
+    background: #222;
+    display: flex;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    overflow-x: auto;   /* Allow horizontal scroll on small screens */
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
+    padding: 15px;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+    z-index: 1003;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    scrollbar-width: none; /* Hide scrollbar in Firefox */
+}
+
+/* Hide scrollbar in Chrome/Safari */
+.navbar::-webkit-scrollbar {
+    display: none;
+}
+
+.navbar a {
+    color: #FFD700;
+    text-decoration: none;
+    font-size: 18px;
+    padding: 10px 15px;
+    transition: 0.3s;
+    white-space: nowrap; /* Prevent text wrapping */
+    flex-shrink: 0;       /* Prevent links from shrinking */
+}
+
+.navbar a:hover {
+    background: #FFC107;
+    color: black;
+    border-radius: 5px;
+}
+
+                .container {
+                    margin-top: 100px;
+                    background-color: #222;
+                    padding: 30px;
+                    border-radius: 10px;
+                    width: 80%;
+                    margin-left: auto;
+                    margin-right: auto;
+                    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+                }
+                .form-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 10px 0;
+                }
+                .form-row label {
+                    width: 250px;
+                    text-align: right;
+                    margin-right: 10px;
+                }
+                input[type="number"] {
+                    padding: 10px;
+                    font-size: 16px;
+                    background: #222;
+                    color: #FFD700;
+                    border: 1px solid #FFD700;
+                    border-radius: 5px;
+                    width: 200px;
+                }
+                button {
+                    padding: 10px 20px;
+                    font-size: 16px;
+                    margin-top: 20px;
+                    background-color: #FFD700;
+                    color: #222;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    transition: background-color 0.3s;
+                }
+                button:hover {
+                    background-color: #FFC107;
+                }
+                #result {
+                    margin-top: 20px;
+                    font-size: 20px;
+                    color: #00ff00;
+                }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="fyp.html">Dashboard</a>
+    <a href="model.html">3D Model</a>
+    <a href="instructions.html">Instructions</a>
+    <a href="analysis.html">Analysis</a>
+    <a href="data.html">TKPH Calculator</a>
+    <a href="output.html">Output</a>
+</nav>
+
+<div class="container">
+    <h2>Calculate TKPH (Ton Kilometer per Hour)</h2>
+    <form id="tkphForm">
+        <div class="form-row">
+            <label for="qLoaded">Q Loaded (kg):</label>
+            <input type="number" id="qLoaded" required>
+        </div>
+        <div class="form-row">
+            <label for="qEmpty">Q Empty (kg):</label>
+            <input type="number" id="qEmpty" required>
+        </div>
+        <div class="form-row">
+            <label for="nCycles">Number of Cycles (N):</label>
+            <input type="number" id="nCycles" required>
+        </div>
+        <div class="form-row">
+            <label for="cycleLength">Cycle Length in KM (L):</label>
+            <input type="number" id="cycleLength" required>
+        </div>
+        <div class="form-row">
+            <label for="hours">Operating Hours (H):</label>
+            <input type="number" id="hours" required>
+        </div>
+        <button type="submit">Calculate TKPH</button>
+    </form>
+    <div id="result"></div>
+</div>
+<script>
+    document.getElementById('tkphForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const qLoaded = parseFloat(document.getElementById('qLoaded').value);
+        const qEmpty = parseFloat(document.getElementById('qEmpty').value);
+        const nCycles = parseFloat(document.getElementById('nCycles').value);
+        const cycleLength = parseFloat(document.getElementById('cycleLength').value);
+        const hours = parseFloat(document.getElementById('hours').value);
+
+        const avgLoad = (qLoaded + qEmpty) / 2 / 1000; // Convert to tonnes
+        const tkph = (avgLoad * (nCycles * cycleLength)) / hours;
+
+        // Create a timestamp like 2025-04-08T11:20:31.5976295
+        const now = new Date();
+        const iso = now.toISOString(); // 2025-04-08T11:20:31.597Z
+        const trimmed = iso.substring(0, 23); // removes 'Z' and limits to milliseconds: 2025-04-08T11:20:31.597
+        const formattedTimestamp = `${trimmed}000`; // Appends '000' to simulate microsecond precision
+
+        document.getElementById('result').innerText = `Calculated TKPH: ${tkph.toFixed(2)}`;
+
+        // Send to backend with timestamp
+        fetch('http://172.20.10.3:8080/api/tkph/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                qLoaded,
+                qEmpty,
+                nCycles,
+                cycleLength,
+                hours,
+                tkph,
+                timestamp: formattedTimestamp
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                console.log("TKPH data saved successfully.");
+            } else {
+                console.error("Failed to save TKPH data.");
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

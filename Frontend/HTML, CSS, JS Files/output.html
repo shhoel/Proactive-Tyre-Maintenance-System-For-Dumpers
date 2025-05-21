@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tyre Monitoring System</title>
+    <style>
+        body {
+            max-width: 1200px;
+            margin: 0 auto;
+
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #FFD700;
+            font-family: 'Arial', sans-serif;
+        }
+         .navbar {
+    background: #222;
+    display: flex;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    overflow-x: auto;   /* Allow horizontal scroll on small screens */
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
+    padding: 15px;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+    z-index: 1003;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    scrollbar-width: none; /* Hide scrollbar in Firefox */
+}
+
+/* Hide scrollbar in Chrome/Safari */
+.navbar::-webkit-scrollbar {
+    display: none;
+}
+
+.navbar a {
+    color: #FFD700;
+    text-decoration: none;
+    font-size: 18px;
+    padding: 10px 15px;
+    transition: 0.3s;
+    white-space: nowrap; /* Prevent text wrapping */
+    flex-shrink: 0;       /* Prevent links from shrinking */
+}
+
+.navbar a:hover {
+    background: #FFC107;
+    color: black;
+    border-radius: 5px;
+}
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top:100px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #FFD700;
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            color: #FFD700;
+            margin: 0;
+        }
+
+        .status {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 0.9em;
+        }
+
+        .status span {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+
+        .connected {
+            background-color: #2e7d32;
+            color: #fff;
+        }
+
+        .disconnected {
+            background-color: #c62828;
+            color: #fff;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .regression-cell {
+            grid-column: span 2;
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .classification-cell, .anomaly-cell {
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .button {
+            flex: 1;
+            padding: 10px 15px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #FFD700;
+            color: #000;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #FFC107;
+        }
+
+        .results {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .result-box {
+            flex: 1 1 45%;
+            min-width: 200px;
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.4);
+            border-left: 5px solid #FFD700;
+            color: #FFD700;
+        }
+
+        .result-box.anomaly {
+            border-left-color: #F44336;
+        }
+
+        .result-box.safety {
+            border-left-color: #4CAF50;
+        }
+
+        .result-box.tyre-life {
+            border-left-color: #6200ea;
+        }
+
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #FFD700;
+        }
+
+        .result-value {
+            font-size: 1.4em;
+            color: #fff;
+        }
+
+        .unit {
+            font-size: 0.8em;
+            color: #ccc;
+            margin-left: 5px;
+        }
+
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <a href="fyp.html">Dashboard</a>
+    <a href="model.html">3D Model</a>
+    <a href="instructions.html">Instructions</a>
+    <a href="analysis.html">Analysis</a>
+    <a href="data.html">TKPH Calculator</a>
+    <a href="output.html">Output</a>
+</nav>
+<div class="header">
+    <h1>Tyre Monitoring System</h1>
+    <div class="status">
+        <div>Live Data:</div>
+        <span id="liveStatus" class="disconnected">Offline</span>
+    </div>
+</div>
+
+<div class="grid-container">
+    <!-- Regression Cell -->
+    <div class="regression-cell">
+        <h2>Tyre Life Prediction (Regression)</h2>
+        <button class="button" onclick="runPrediction('regression')">Predict Tyre Life</button>
+        <div class="results">
+            <div class="result-box tyre-life" id="regressionResult">
+                <div class="result-title">Predicted Tyre Life</div>
+                <div class="result-value" id="lifeValue">-</div>
+                <span class="unit">km</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Classification Cell -->
+    <div class="classification-cell">
+        <h2>Safety Classification</h2>
+        <div class="button-container">
+            <button class="button" onclick="runPrediction('classification_live')">Live Data</button>
+            <button class="button" onclick="runPrediction('classification_stored')">Stored Data</button>
+        </div>
+        <div class="results">
+            <div class="result-box safety" id="classificationLive">
+                <div class="result-title">Live Data Result</div>
+                <div class="result-value" id="safetyLive">-</div>
+            </div>
+            <div class="result-box safety" id="classificationStored">
+                <div class="result-title">Stored Data Result</div>
+                <div class="result-value" id="safetyStored">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anomaly Detection Cell -->
+    <div class="anomaly-cell">
+        <h2>Anomaly Detection</h2>
+        <div class="button-container">
+            <button class="button" onclick="runPrediction('anomaly_live')">Live Data</button>
+            <button class="button" onclick="runPrediction('anomaly_stored')">Stored Data</button>
+        </div>
+        <div class="results">
+            <div class="result-box anomaly" id="anomalyLive">
+                <div class="result-title">Live Data Result</div>
+                <div class="result-value" id="anomalyLive">-</div>
+            </div>
+            <div class="result-box anomaly" id="anomalyStored">
+                <div class="result-title">Stored Data Result</div>
+                <div class="result-value" id="anomalyStored">-</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function checkLiveDataStatus() {
+        fetch('http://localhost:8080/api/data/latest')
+            .then(response => response.json())
+            .then(data => {
+                const lastUpdate = new Date(data.timestamp || null);
+                const now = new Date();
+
+                if (now - lastUpdate < 5000) {
+                    document.getElementById('liveStatus').className = 'connected';
+                    document.getElementById('liveStatus').textContent = 'Streaming';
+                } else {
+                    document.getElementById('liveStatus').className = 'disconnected';
+                    document.getElementById('liveStatus').textContent = 'Using DB backup';
+                }
+            })
+            .catch(() => {
+                document.getElementById('liveStatus').className = 'disconnected';
+                document.getElementById('liveStatus').textContent = 'Offline';
+            });
+    }
+
+    function runPrediction(type) {
+        let endpoint = '';
+        let resultId = '';
+        let isClassification = false;
+        let isAnomaly = false;
+
+        switch(type) {
+            case 'regression':
+                endpoint = '/api/predict/regression';
+                resultId = 'lifeValue';
+                break;
+            case 'classification_live':
+                endpoint = '/api/predict/classification/live';
+                resultId = 'safetyLive';
+                isClassification = true;
+                break;
+            case 'classification_stored':
+                endpoint = '/api/predict/classification/stored';
+                resultId = 'safetyStored';
+                isClassification = true;
+                break;
+            case 'anomaly_live':
+                endpoint = '/api/predict/anomaly/live';
+                resultId = 'anomalyLive';
+                isAnomaly = true;
+                break;
+            case 'anomaly_stored':
+                endpoint = '/api/predict/anomaly/stored';
+                resultId = 'anomalyStored';
+                isAnomaly = true;
+                break;
+        }
+
+        document.getElementById(resultId).textContent = 'Loading...';
+
+        fetch(http://localhost:8080${endpoint})
+            .then(response => {
+                if (!response.ok) throw new Error('Network error');
+                return response.json();
+            })
+            .then(data => {
+                let value = '-';
+                if (isClassification && data.safetyStatus) {
+                    value = data.safetyStatus;
+                } else if (isAnomaly && data.anomalyStatus) {
+                    value = data.anomalyStatus;
+                } else if (data.tyreLifePrediction != null) {
+                    value = ${data.tyreLifePrediction.toFixed(2)} km;
+                }
+                document.getElementById(resultId).textContent = value;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById(resultId).textContent = 'Error';
+                alert("Failed to get prediction. Please check if backend services are running.");
+            });
+    }
+
+    setInterval(checkLiveDataStatus, 3000);
+    checkLiveDataStatus();
+</script>
+</body>
+</html>

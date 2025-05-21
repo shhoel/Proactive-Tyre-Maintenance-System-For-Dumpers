@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tyre Monitoring Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.0.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #222;
+            color: #FFD700;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            padding-top: 70px;
+        }
+
+        :root {
+            --primary-color: #FFD700; /* Yellow */
+            --primary-dark: #FFC107; /* Darker yellow for hover */
+            --secondary-color: #FFD700; /* Yellow for consistency */
+            --danger-color: #F44336; /* Keep red for alerts */
+            --warning-color: #FFC107; /* Matches hover yellow */
+            --background-dark: #222; /* Black navbar background */
+            --background-light: #333; /* Slightly lighter black for containers */
+            --text-primary: #FFD700; /* Yellow text */
+            --text-secondary: #AAAAAA; /* Gray for secondary text */
+            --border-color: #444; /* Darker border */
+        }
+
+        .navbar {
+            background: #222;
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+            z-index: 1003;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+            scrollbar-width: none;
+        }
+
+        .navbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .navbar a {
+            color: #FFD700;
+            text-decoration: none;
+            font-size: 18px;
+            padding: 10px 15px;
+            transition: 0.3s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .navbar a:hover {
+            background: #FFC107;
+            color: #000;
+            border-radius: 5px;
+        }
+
+        .dashboard {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .controls {
+            background: var(--background-light);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        label {
+            color: var(--primary-color);
+            font-weight: bold;
+            min-width: 100px;
+            font-size: 0.95rem;
+        }
+
+        select, input {
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid var(--primary-color);
+            background: #2d2d2d;
+            color: #FFD700;
+            font-size: 0.95rem;
+            min-width: 200px;
+            transition: all 0.3s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
+        }
+
+        button {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            background: var(--primary-color);
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+            min-width: 120px;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .chart-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .chart-container {
+            flex: 1;
+            min-width: 450px;
+            background: var(--background-light);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .chart-container:hover {
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+            transform: translateY(-2px);
+        }
+
+        .chart-container canvas {
+            width: 100% !important;
+            height: 350px !important;
+        }
+
+        .tilt-indicator {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            margin-left: 10px;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .tilt-yes {
+            background-color: var(--danger-color);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255, 82, 82, 0.5);
+        }
+
+        .tilt-no {
+            background-color: var(--primary-color);
+            color: #000;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        #connection-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .status-connected {
+            background: var(--primary-color);
+            color: #000;
+        }
+
+        .status-connected-ws {
+            background: var(--warning-color);
+            color: #000;
+        }
+
+        .status-loading {
+            background: var(--secondary-color);
+            color: #000;
+        }
+
+        .status-disconnected,
+        .status-error {
+            background: var(--danger-color);
+            color: #fff;
+        }
+
+        #last-update {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            background: rgba(51, 51, 51, 0.8);
+            padding: 8px 12px;
+            border-radius: 6px;
+            z-index: 1000;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chart-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .chart-header h3 small {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-left: 5px;
+        }
+
+        .chart-type-toggle {
+            display: flex;
+            gap: 8px;
+            background: #2d2d2d;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .chart-type-toggle button {
+            min-width: 70px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            background: #333;
+            color: #FFD700;
+            margin: 0;
+        }
+
+        .chart-type-toggle button.active {
+            background: var(--primary-color);
+            color: #000;
+        }
+
+        .tilt-chart-toggle .chart-type-btn {
+            min-width: 90px;
+        }
+
+        .mode-toggle {
+            display: flex;
+            margin-left: auto;
+            background: #2d2d2d;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .mode-toggle button {
+            min-width: 80px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            background: #333;
+            color: #FFD700;
+            margin: 0;
+        }
+
+        .mode-toggle button.active {
+            background: var(--secondary-color);
+            color: #000;
+        }
+
+        .alert-threshold {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            background: rgba(51, 51, 51, 0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            z-index: 10;
+        }
+
+        .alert-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: var(--danger-color);
+            color: #fff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            z-index: 10;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .chart-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            z-index: 10;
+        }
+
+        .chart-actions button {
+            min-width: auto;
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            background: rgba(51, 51, 51, 0.8);
+            color: #FFD700;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-actions button:hover {
+            background: var(--primary-color);
+            color: #000;
+        }
+
+        .data-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: var(--background-light);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .summary-card {
+            flex: 1;
+            min-width: 150px;
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .summary-card h4 {
+            margin: 0 0 5px 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .summary-card p {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .summary-card .trend {
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        .trend-up {
+            color: var(--danger-color);
+        }
+
+        .trend-down {
+            color: var(--primary-color);
+        }
+
+        .trend-neutral {
+            color: var(--text-secondary);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+        }
+
+        .spinner {
+            border: 5px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 5px solid var(--primary-color);
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #FFD700;
+            font-size: 1.2rem;
+        }
+
+        .no-data {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                min-width: 100%;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .control-group {
+                width: 100%;
+            }
+
+            select, input {
+                width: 100%;
+            }
+
+            .summary-card {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="f
+
+yp.html">Dashboard</a>
+    <a href="model.html">3D Model</a>
+    <a href="instructions.html">Instructions</a>
+    <a href="analysis.html">Analysis</a>
+    <a href="data.html">TKPH Calculator</a>
+    <a href="output.html">Output</a>
+</nav>
+
+<div class="dashboard">
+    <h1>Tyre Monitoring Analytics Dashboard</h1>
+
+    <div class="data-summary" id="dataSummary">
+        <div class="summary-card">
+            <h4>Current Temperature</h4>
+            <p id="currentTemp">-- °C</p>
+            <div class="trend trend-neutral" id="tempTrend">--</div>
+        </div>
+        <div class="summary-card">
+            <h4>Current Pressure</h4>
+            <p id="currentPressure">-- bar</p>
+            <div class="trend trend-neutral" id="pressureTrend">--</div>
+        </div>
+        <div class="summary-card">
+            <h4>Current Vibration</h4>
+            <p id="currentVibration">--</p>
+            <div class="trend trend-neutral" id="vibrationTrend">--</div>
+        </div>
+        <div class="summary-card">
+            <h4>Current Speed</h4>
+            <p id="currentSpeed">-- km/h</p>
+            <div class="trend trend-neutral" id="speedTrend">--</div>
+        </div>
+        <div class="summary-card">
+            <h4>Tilt Status</h4>
+            <p id="currentTilt">--</p>
+            <div class="trend trend-neutral" id="tiltTrend">--</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="dateRange">Time Range:</label>
+            <select id="dateRange">
+                <option value="1">Last 24 Hours</option>
+                <option value="7" selected>Last 7 Days</option>
+                <option value="14">Last 14 Days</option>
+                <option value="30">Last 30 Days</option>
+                <option value="custom">Custom Range</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="customRangeGroup" style="display:none">
+            <label for="startDate">From:</label>
+            <input type="datetime-local" id="startDate">
+            <label for="endDate">To:</label>
+            <input type="datetime-local" id="endDate">
+        </div>
+
+        <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="live">Live</button>
+            <button class="mode-btn" data-mode="history">History</button>
+        </div>
+
+        <button id="applyBtn">Apply</button>
+        <button id="resetBtn">Reset</button>
+        <button id="exportBtn">Export Data</button>
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Temperature <small>(°C)</small></h3>
+                <div class="chart-type-toggle">
+                    <button class="chart-type-btn active" data-chart="tempChart" data-type="line">Line</button>
+                    <button class="chart-type-btn" data-chart="tempChart" data-type="bar">Bar</button>
+                </div>
+            </div>
+            <div class="alert-threshold">Alert: >80°C</div>
+            <canvas id="tempChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Pressure <small>(bar)</small></h3>
+                <div class="chart-type-toggle">
+                    <button class="chart-type-btn" data-chart="pressureChart" data-type="line">Line</button>
+                    <button class="chart-type-btn active" data-chart="pressureChart" data-type="bar">Bar</button>
+                </div>
+            </div>
+            <div class="alert-threshold">Alert: <2.1 or >3.5 bar</div>
+            <canvas id="pressureChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Vibration <small>(intensity)</small></h3>
+                <div class="chart-type-toggle">
+                    <button class="chart-type-btn active" data-chart="vibrationChart" data-type="line">Line</button>
+                    <button class="chart-type-btn" data-chart="vibrationChart" data-type="bar">Bar</button>
+                </div>
+            </div>
+            <div class="alert-threshold">Alert: >7.5</div>
+            <canvas id="vibrationChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Speed <small>(km/h)</small></h3>
+                <div class="chart-type-toggle">
+                    <button class="chart-type-btn" data-chart="speedChart" data-type="line">Line</button>
+                    <button class="chart-type-btn active" data-chart="speedChart" data-type="bar">Bar</button>
+                </div>
+            </div>
+            <div class="alert-threshold">Alert: >120 km/h</div>
+            <canvas id="speedChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Tilt Status
+                    <span id="tiltIndicator" class="tilt-indicator tilt-no">No Tilt</span>
+                </h3>
+                <div class="chart-type-toggle tilt-chart-toggle">
+                    <button class="chart-type-btn active" data-chart="tiltChart" data-type="line">Stepped Line</button>
+                    <button class="chart-type-btn" data-chart="tiltChart" data-type="bar">Bar</button>
+                </div>
+            </div>
+            <canvas id="tiltChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>Alerts History</h3>
+            </div>
+            <div id="alertsContainer" class="no-data">No alerts recorded</div>
+        </div>
+    </div>
+</div>
+
+<div id="connection-status">Connecting...</div>
+<div id="last-update"></div>
+
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading data...</div>
+</div>
+
+<script>
+    // Enhanced Tyre Monitoring Dashboard
+    // Version 2.0 with improved features and performance
+
+    // Chart instances and connection
+    let tempChart, pressureChart, vibrationChart, speedChart, tiltChart;
+    let stompClient = null;
+    const backendUrl = "http://192.168.175.220:8080";
+    let isLiveMode = true;
+    let historicalData = [];
+    const MAX_LIVE_POINTS = 200;
+    let chartZoomResetFunctions = {};
+    let lastDataPoints = {};
+    let alertHistory = [];
+    let alertThresholds = {
+        temperature: { min: null, max: 80 },
+        pressure: { min: 2.1, max: 3.5 },
+        vibration: { min: null, max: 7.5 },
+        speed: { min: null, max: 120 }
+    };
+
+    // Initialize WebSocket connection with retry logic
+    function connectWebSocket() {
+        updateConnectionStatus('loading');
+
+        const socket = new SockJS(`${backendUrl}/ws`);
+        stompClient = Stomp.over(socket);
+
+        // Configure heartbeat (important for long-running connections)
+        stompClient.heartbeat.outgoing = 10000; // Send every 10 seconds
+        stompClient.heartbeat.incoming = 10000; // Expect every 10 seconds
+
+        stompClient.connect({}, (frame) => {
+            console.log('WebSocket Connected:', frame);
+            updateConnectionStatus('connected');
+
+            stompClient.subscribe('/topic/tyreData', (message) => {
+                if (!isLiveMode) return;
+
+                try {
+                    const realTimeData = JSON.parse(message.body);
+                    processIncomingData(realTimeData);
+
+                    // Store for historical reference
+                    historicalData.push(realTimeData);
+                    if (historicalData.length > 1000) {
+                        historicalData.shift();
+                    }
+                } catch (error) {
+                    console.error('Error processing WebSocket message:', error);
+                    logAlert('error', `Data processing error: ${error.message}`);
+                }
+            });
+
+            // Subscribe to alerts channel if available
+            try {
+                stompClient.subscribe('/topic/alerts', (message) => {
+                    const alert = JSON.parse(message.body);
+                    logAlert(alert.type, alert.message, alert.timestamp);
+                });
+            } catch (e) {
+                console.log('No alerts channel available');
+            }
+
+        }, (error) => {
+            console.error('WebSocket Error:', error);
+            updateConnectionStatus('disconnected');
+            logAlert('error', `WebSocket disconnected: ${error}`);
+
+            // Exponential backoff for reconnection
+            const delay = Math.min(30000, 1000 * Math.pow(2, Math.min(5, (stompClient.reconnectAttempts || 0))));
+            console.log(`Attempting reconnect in ${delay/1000} seconds...`);
+
+            setTimeout(connectWebSocket, delay);
+        });
+
+        // Track reconnection attempts
+        stompClient.reconnectAttempts = 0;
+        stompClient.onStompError = function(frame) {
+            console.error('STOMP protocol error:', frame.headers.message);
+            stompClient.reconnectAttempts = (stompClient.reconnectAttempts || 0) + 1;
+        };
+    }
+
+    // Process incoming data with validation and alert checks
+    function processIncomingData(data) {
+        if (!data || !data.timestamp) {
+            console.error('Invalid data received:', data);
+            logAlert('error', 'Received invalid data structure');
+            return;
+        }
+
+        try {
+            // Validate data fields
+            const isValid = validateData(data);
+            if (!isValid) return;
+
+            // Check for threshold alerts
+            checkForAlerts(data);
+
+            // Update summary cards with current values
+            updateSummaryCards(data);
+
+            // Add to existing charts
+            addDataPoint(tempChart, data.timestamp, data.temperature);
+            addDataPoint(pressureChart, data.timestamp, data.pressure);
+            addDataPoint(vibrationChart, data.timestamp, data.vibration);
+            addDataPoint(speedChart, data.timestamp, data.speed);
+            addDataPoint(tiltChart, data.timestamp, data.tilt === "Tilt" ? 1 : 0);
+
+            // Update tilt indicator
+            updateTiltIndicator(data.tilt);
+
+            // Store last data point for trend calculation
+            lastDataPoints = {
+                temperature: data.temperature,
+                pressure: data.pressure,
+                vibration: data.vibration,
+                speed: data.speed,
+                timestamp: data.timestamp
+            };
+
+            document.getElementById('last-update').textContent =
+                `Last update: ${new Date(data.timestamp).toLocaleString()} (Live)`;
+        } catch (error) {
+            console.error('Error processing incoming data:', error);
+            logAlert('error', `Data processing error: ${error.message}`);
+        }
+    }
+
+    // Validate incoming data structure and values
+    function validateData(data) {
+        const requiredFields = ['timestamp', 'temperature', 'pressure', 'vibration', 'speed', 'tilt'];
+        const missingFields = requiredFields.filter(field => !(field in data));
+
+        if (missingFields.length > 0) {
+            logAlert('error', `Missing data fields: ${missingFields.join(', ')}`);
+            return false;
+        }
+
+        // Check for valid numeric values
+        const numericFields = ['temperature', 'pressure', 'vibration', 'speed'];
+        const invalidNumbers = numericFields.filter(field =>
+            isNaN(parseFloat(data[field])) || !isFinite(data[field])
+        );
+
+        if (invalidNumbers.length > 0) {
+            logAlert('error', `Invalid numeric values in: ${invalidNumbers.join(', ')}`);
+            return false;
+        }
+
+        // Check for valid timestamp
+        if (isNaN(new Date(data.timestamp).getTime())) {
+            logAlert('error', `Invalid timestamp: ${data.timestamp}`);
+            return false;
+        }
+
+        return true;
+    }
+
+    // Check data against alert thresholds
+    function checkForAlerts(data) {
+        // Temperature alert
+        if (alertThresholds.temperature.max !== null && data.temperature > alertThresholds.temperature.max) {
+            logAlert('warning', `High temperature alert: ${data.temperature}°C`, data.timestamp);
+        }
+
+        // Pressure alerts
+        if (alertThresholds.pressure.min !== null && data.pressure < alertThresholds.pressure.min) {
+            logAlert('warning', `Low pressure alert: ${data.pressure} bar`, data.timestamp);
+        }
+        if (alertThresholds.pressure.max !== null && data.pressure > alertThresholds.pressure.max) {
+            logAlert('warning', `High pressure alert: ${data.pressure} bar`, data.timestamp);
+        }
+
+        // Vibration alert
+        if (alertThresholds.vibration.max !== null && data.vibration > alertThresholds.vibration.max) {
+            logAlert('warning', `High vibration alert: ${data.vibration}`, data.timestamp);
+        }
+
+        // Speed alert
+        if (alertThresholds.speed.max !== null && data.speed > alertThresholds.speed.max) {
+            logAlert('warning', `High speed alert: ${data.speed} km/h`, data.timestamp);
+        }
+
+        // Tilt alert
+        if (data.tilt === "Tilt") {
+            logAlert('danger', 'Tilt detected!', data.timestamp);
+        }
+    }
+
+    // Log alert to history and UI
+    function logAlert(type, message, timestamp = new Date().toISOString()) {
+        const alert = {
+            type,
+            message,
+            timestamp,
+            read: false
+        };
+
+        alertHistory.unshift(alert);
+        if (alertHistory.length > 50) {
+            alertHistory.pop();
+        }
+
+        updateAlertsDisplay();
+
+        // Visual notification for important alerts
+        if (type === 'danger') {
+            showAlertNotification(message);
+        }
+    }
+
+    // Show visual alert notification
+    function showAlertNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'alert-notification';
+        notification.innerHTML = `
+            <div style="position: fixed; top: 20px; right: 20px; background: #F44336; color: white;
+                padding: 15px; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 2000;
+                animation: slideIn 0.5s forwards;">
+                <strong>ALERT:</strong> ${message}
+            </div>
+        `;
+
+        document.body.appendChild(notification);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.5s forwards';
+            setTimeout(() => notification.remove(), 500);
+        }, 5000);
+
+        // Add CSS animation if not already present
+        if (!document.getElementById('alertAnimations')) {
+            const style = document.createElement('style');
+            style.id = 'alertAnimations';
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes slideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    // Update alerts display in UI
+    function updateAlertsDisplay() {
+        const container = document.getElementById('alertsContainer');
+        if (!container) return;
+
+        if (alertHistory.length === 0) {
+            container.innerHTML = '<div class="no-data">No alerts recorded</div>';
+            return;
+        }
+
+        let html = '<div class="alerts-list">';
+        alertHistory.forEach((alert, index) => {
+            const date = new Date(alert.timestamp).toLocaleString();
+            const alertClass = `alert-${alert.type} ${alert.read ? 'read' : 'unread'}`;
+
+            html += `
+                <div class="alert-item ${alertClass}" data-index="${index}">
+                    <div class="alert-header">
+                        <span class="alert-type">${alert.type.toUpperCase()}</span>
+                        <span class="alert-time">${date}</span>
+                    </div>
+                    <div class="alert-message">${alert.message}</div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+
+        // Add click handlers to mark alerts as read
+        document.querySelectorAll('.alert-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                alertHistory[index].read = true;
+                this.classList.remove('unread');
+                this.classList.add('read');
+            });
+        });
+    }
+
+    // Update summary cards with current values and trends
+    function updateSummaryCards(data) {
+        // Temperature
+        document.getElementById('currentTemp').textContent = `${data.temperature.toFixed(1)} °C`;
+        updateTrendIndicator('tempTrend', data.temperature, lastDataPoints.temperature);
+
+        // Pressure
+        document.getElementById('currentPressure').textContent = `${data.pressure.toFixed(2)} bar`;
+        updateTrendIndicator('pressureTrend', data.pressure, lastDataPoints.pressure);
+
+        // Vibration
+        document.getElementById('currentVibration').textContent = data.vibration.toFixed(1);
+        updateTrendIndicator('vibrationTrend', data.vibration, lastDataPoints.vibration);
+
+        // Speed
+        document.getElementById('currentSpeed').textContent = `${data.speed.toFixed(0)} km/h`;
+        updateTrendIndicator('speedTrend', data.speed, lastDataPoints.speed);
+
+        // Tilt
+        document.getElementById('currentTilt').textContent = data.tilt === "Tilt" ? "TILT" : "Normal";
+        updateTrendIndicator('tiltTrend', data.tilt, lastDataPoints.tilt);
+    }
+
+    // Update trend indicator with arrow and color
+    function updateTrendIndicator(elementId, currentValue, previousValue) {
+        const element = document.getElementById(elementId);
+        if (!element || previousValue === undefined || previousValue === null) {
+            element.textContent = '--';
+            element.className = 'trend trend-neutral';
+            return;
+        }
+
+        // Special handling for tilt (string comparison)
+        if (typeof currentValue === 'string' && typeof previousValue === 'string') {
+            if (currentValue === previousValue) {
+                element.textContent = '→ No change';
+                element.className = 'trend trend-neutral';
+            } else if (currentValue === "Tilt") {
+                element.textContent = '↑ Tilt started';
+                element.className = 'trend trend-up';
+            } else {
+                element.textContent = '↓ Tilt ended';
+                element.className = 'trend trend-down';
+            }
+            return;
+        }
+
+        // Numeric comparison
+        const diff = currentValue - previousValue;
+        const absDiff = Math.abs(diff);
+        const threshold = 0.01; // Minimum change to show trend
+
+        if (absDiff < threshold) {
+            element.textContent = '→ No change';
+            element.className = 'trend trend-neutral';
+        } else if (diff > 0) {
+            element.textContent = `↑ ${absDiff.toFixed(2)}`;
+            element.className = 'trend trend-up';
+        } else {
+            element.textContent = `↓ ${absDiff.toFixed(2)}`;
+            element.className = 'trend trend-down';
+        }
+    }
+
+    // Update UI with real-time data
+    function updateRealTimeData(data) {
+        if (!data || !data.timestamp) {
+            console.error('Invalid data received:', data);
+            return;
+        }
+
+        try {
+            // Add to existing charts
+            addDataPoint(tempChart, data.timestamp, data.temperature);
+            addDataPoint(pressureChart, data.timestamp, data.page);
+            addDataPoint(vibrationChart, data.timestamp, data.vibration);
+            addDataPoint(speedChart, data.timestamp, data.speed);
+            addDataPoint(tiltChart, data.timestamp, data.tilt === "Tilt" ? 1 : 0);
+
+            // Update tilt indicator
+            updateTiltIndicator(data.tilt);
+
+            document.getElementById('last-update').textContent =
+                `Last update: ${new Date(data.timestamp).toLocaleString()} (Live)`;
+        } catch (error) {
+            console.error('Error updating real-time data:', error);
+        }
+    }
+
+    function updateTiltIndicator(tiltStatus) {
+        const tiltIndicator = document.getElementById('tiltIndicator');
+        if (!tiltIndicator) return;
+
+        tiltIndicator.textContent = tiltStatus;
+        tiltIndicator.className = tiltStatus === "Tilt"
+            ? "tilt-indicator tilt-yes"
+            : "tilt-indicator tilt-no";
+    }
+
+    // Helper to add data points to charts with performance optimization
+    function addDataPoint(chart, timestamp, value) {
+        if (!chart || !timestamp) return;
+
+        try {
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) {
+                console.error('Invalid timestamp:', timestamp);
+                return;
+            }
+
+            if (isLiveMode) {
+                // For live mode, prepend new data and limit points
+                if (chart.data.datasets[0].data.length >= MAX_LIVE_POINTS) {
+                    chart.data.datasets[0].data.pop();
+                }
+                chart.data.datasets[0].data.unshift({
+                    x: date,
+                    y: value
+                });
+            } else {
+                // For historical mode, find and update existing point or add new
+                const existingIndex = chart.data.datasets[0].data.findIndex(
+                    point => new Date(point.x).getTime() === date.getTime()
+                );
+
+                if (existingIndex >= 0) {
+                    chart.data.datasets[0].data[existingIndex].y = value;
+                } else {
+                    chart.data.datasets[0].data.push({
+                        x: date,
+                        y: value
+                    });
+                    // Sort by timestamp
+                    chart.data.datasets[0].data.sort((a, b) => new Date(a.x) - new Date(b.x));
+                }
+            }
+
+            // Performance optimization: only update chart if visible
+            if (isChartVisible(chart)) {
+                chart.update('none'); // 'none' prevents animation for better performance
+            }
+        } catch (error) {
+            console.error('Error adding data point:', error);
+        }
+    }
+
+    // Check if chart is visible in viewport
+    function isChartVisible(chart) {
+        const canvas = chart.canvas;
+        const rect = canvas.getBoundingClientRect();
+        return (
+            rect.top >= 0 &&
+            rect.left >= 0 &&
+            rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+            rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+        );
+    }
+
+    // Initialize date controls
+    function initDateControls() {
+        const dateRange = document.getElementById('dateRange');
+        const customRangeGroup = document.getElementById('customRangeGroup');
+
+        dateRange.addEventListener('change', function() {
+            customRangeGroup.style.display = this.value === 'custom' ? 'flex' : 'none';
+
+            if (this.value !== 'custom') {
+                updateDefaultDates(parseInt(this.value));
+            }
+        });
+
+        // Set initial dates (last 7 days)
+        updateDefaultDates(7);
+    }
+
+    function updateDefaultDates(days) {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - days);
+
+        document.getElementById('startDate').value = formatDateTimeLocal(startDate);
+        document.getElementById('endDate').value = formatDateTimeLocal(endDate);
+    }
+
+    function formatDateTimeLocal(date) {
+        const pad = num => num.toString().padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    // Initialize all charts with enhanced configuration
+    function initCharts() {
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 0
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        tooltipFormat: 'MMM d, yyyy HH:mm',
+                        displayFormats: {
+                            millisecond: 'HH:mm:ss.SSS',
+                            second: 'HH:mm:ss',
+                            minute: 'HH:mm',
+                            hour: 'MMM d HH:mm',
+                            day: 'MMM d',
+                            week: 'MMM d',
+                            month: 'MMM yyyy',
+                            year: 'yyyy'
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Time',
+                        color: '#FFD700'
+                    },
+                    grid: {
+                        color: 'rgba(255, 215, 0, 0.1)'
+                    },
+                    ticks: {
+                        color: '#FFD700'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Value',
+                        color: '#FFD700'
+                    },
+                    grid: {
+                        color: 'rgba(255, 215, 0, 0.1)'
+                    },
+                    ticks: {
+                        color: '#FFD700'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#FFD700'
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+                        },
+                        title: function(context) {
+                            return new Date(context[0].parsed.x).toLocaleString();
+                        }
+                    },
+                    backgroundColor: 'rgba(51, 51, 51, 0.9)',
+                    titleColor: '#FFD700',
+                    bodyColor: '#FFD700',
+                    borderColor: '#FFD700',
+                    borderWidth: 1
+                },
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: 'xy',
+                        modifierKey: 'shift'
+                    },
+                    zoom: {
+                        wheel: {
+                            enabled: true
+                        },
+                        pinch: {
+                            enabled: true
+                        },
+                        mode: 'xy',
+                        drag: {
+                            enabled: true,
+                            backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                            borderColor: '#FFD700',
+                            borderWidth: 1
+                        }
+                    }
+                },
+                annotation: {
+                    annotations: {}
+                },
+                datalabels: {
+                    display: false
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            },
+            elements: {
+                point: {
+                    hoverRadius: 6,
+                    hoverBorderWidth: 2
+                }
+            }
+        };
+
+        // Temperature Chart with threshold line
+        tempChart = createChart(
+            'tempChart',
+            'line',
+            'Temperature (°C)',
+            '#FF6384',
+            'rgba(255, 99, 132, 0.1)',
+            {
+                ...commonOptions,
+                plugins: {
+                    ...commonOptions.plugins,
+                    annotation: {
+                        annotations: {
+                            thresholdLine: {
+                                type: 'line',
+                                yMin: alertThresholds.temperature.max,
+                                yMax: alertThresholds.temperature.max,
+                                borderColor: '#F44336',
+                                borderWidth: 2,
+                                borderDash: [6, 6],
+                                label: {
+                                    content: 'High Temp Threshold',
+                                    enabled: true,
+                                    position: 'left',
+                                    backgroundColor: 'rgba(244, 67, 54, 0.7)'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Pressure Chart with threshold lines
+        pressureChart = createChart(
+            'pressureChart',
+            'bar',
+            'Pressure (bar)',
+            '#36A2EB',
+            'rgba(54, 162, 235, 0.7)',
+            {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: {
+                        ...commonOptions.scales.y,
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    ...commonOptions.plugins,
+                    annotation: {
+                        annotations: {
+                            highThreshold: {
+                                type: 'line',
+                                yMin: alertThresholds.pressure.max,
+                                yMax: alertThresholds.pressure.max,
+                                borderColor: '#F44336',
+                                borderWidth: 2,
+                                borderDash: [6, 6],
+                                label: {
+                                    content: 'Max Pressure',
+                                    enabled: true,
+                                    position: 'left',
+                                    backgroundColor: 'rgba(244, 67, 54, 0.7)'
+                                }
+                            },
+                            lowThreshold: {
+                                type: 'line',
+                                yMin: alertThresholds.pressure.min,
+                                yMax: alertThresholds.pressure.min,
+                                borderColor: '#F44336',
+                                borderWidth: 2,
+                                borderDash: [6, 6],
+                                label: {
+                                    content: 'Min Pressure',
+                                    enabled: true,
+                                    position: 'left',
+                                    backgroundColor: 'rgba(244, 67, 54, 0.7)'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Vibration Chart with threshold line
+        vibrationChart = createChart(
+            'vibrationChart',
+            'line',
+            'Vibration (intensity)',
+            '#FFCE56',
+            'rgba(255, 206, 86, 0.1)',
+            {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: {
+                        ...commonOptions.scales.y,
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    ...commonOptions.plugins,
+                    annotation: {
+                        annotations: {
+                            thresholdLine: {
+                                type: 'line',
+                                yMin: alertThresholds.vibration.max,
+                                yMax: alertThresholds.vibration.max,
+                                borderColor: '#F44336',
+                                borderWidth: 2,
+                                borderDash: [6, 6],
+                                label: {
+                                    content: 'Vibration Threshold',
+                                    enabled: true,
+                                    position: 'left',
+                                    backgroundColor: 'rgba(244, 67, 54, 0.7)'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Speed Chart with threshold line
+        speedChart = createChart(
+            'speedChart',
+            'bar',
+            'Speed (km/h)',
+            '#4BC0C0',
+            'rgba(75, 192, 192, 0.7)',
+            {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: {
+                        ...commonOptions.scales.y,
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    ...commonOptions.plugins,
+                    annotation: {
+                        annotations: {
+                            thresholdLine: {
+                                type: 'line',
+                                yMin: alertThresholds.speed.max,
+                                yMax: alertThresholds.speed.max,
+                                borderColor: '#F44336',
+                                borderWidth: 2,
+                                borderDash: [6, 6],
+                                label: {
+                                    content: 'Speed Limit',
+                                    enabled: true,
+                                    position: 'left',
+                                    backgroundColor: 'rgba(244, 67, 54, 0.7)'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Tilt Chart
+        tiltChart = createChart(
+            'tiltChart',
+            'line',
+            'Tilt Status',
+            '#F44336',
+            'rgba(244, 67, 54, 0.1)',
+            {
+                ...commonOptions,
+                scales: {
+                    ...commonOptions.scales,
+                    y: {
+                        min: 0,
+                        max: 1,
+                        ticks: {
+                            callback: function(value) {
+                                return value === 1 ? 'TILT' : 'NO TILT';
+                            },
+                            color: '#FFD700'
+                        }
+                    }
+                },
+                plugins: {
+                    ...commonOptions.plugins,
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y === 1 ? 'TILT' : 'NO TILT'}`;
+                            },
+                            title: function(context) {
+                                return new Date(context[0].parsed.x).toLocaleString();
+                            }
+                        }
+                    }
+                }
+            },
+            true
+        );
+
+        // Store reset functions for each chart
+        chartZoomResetFunctions = {
+            tempChart: () => tempChart.resetZoom(),
+            pressureChart: () => pressureChart.resetZoom(),
+            vibrationChart: () => vibrationChart.resetZoom(),
+            speedChart: () => speedChart.resetZoom(),
+            tiltChart: () => tiltChart.resetZoom()
+        };
+    }
+
+    function createChart(elementId, type, label, borderColor, backgroundColor, options, stepped = false) {
+        const ctx = document.getElementById(elementId).getContext('2d');
+        return new Chart(ctx, {
+            type: type,
+            data: {
+                datasets: [{
+                    label: label,
+                    data: [],
+                    borderColor: borderColor,
+                    backgroundColor: backgroundColor,
+                    borderWidth: type === 'line' ? 2 : 1,
+                    tension: type === 'line' ? 0.1 : undefined,
+                    stepped: stepped ? 'after' : false,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: borderColor,
+                    pointBorderColor: '#FFD700',
+                    pointBorderWidth: 1,
+                    fill: type === 'line'
+                }]
+            },
+            options: options
+        });
+    }
+
+    // Function to toggle chart type with animation
+    function toggleChartType(chartId, type) {
+        const chart = getChartById(chartId);
+        if (!chart) return;
+
+        try {
+            // Save current data and styling
+            const data = chart.data.datasets[0].data;
+            const label = chart.data.datasets[0].label;
+            const borderColor = chart.data.datasets[0].borderColor;
+            const backgroundColor = chart.data.datasets[0].backgroundColor;
+
+            // Destroy old chart
+            chart.destroy();
+
+            // Special handling for tilt chart
+            if (chartId === 'tiltChart') {
+                const newChart = createChart(
+                    chartId,
+                    type,
+                    label,
+                    borderColor,
+                    type === 'line' ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.7)',
+                    {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    tooltipFormat: 'MMM d, yyyy HH:mm'
+                                },
+                                title: { display: true, text: 'Time', color: '#FFD700' },
+                                grid: { color: 'rgba(255, 215, 0, 0.1)' },
+                                ticks: { color: '#FFD700' }
+                            },
+                            y: {
+                                min: 0,
+                                max: 1,
+                                ticks: {
+                                    callback: function(value) {
+                                        return value === 1 ? 'TILT' : 'NORMAL';
+                                    },
+                                    color: '#FFD700'
+                                },
+                                title: { display: true, text: 'Status', color: '#FFD700' },
+                                grid: { color: 'rgba(255, 215, 0, 0.1)' }
+                            }
+                        },
+                        plugins: {
+                            legend: { labels: { color: '#FFD700' } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.parsed.y === 1 ? 'TILT' : 'NORMAL'}`;
+                                    }
+                                }
+                            },
+                            zoom: {
+                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
+                                pan: { enabled: true, mode: 'xy' }
+                            }
+                        }
+                    },
+                    type === 'line'
+                );
+
+                newChart.data.datasets[0].data = data;
+                newChart.update();
+                tiltChart = newChart;
+                chartZoomResetFunctions.tiltChart = () => tiltChart.resetZoom();
+                return;
+            }
+
+            // For other charts
+            const isLine = type === 'line';
+            const newChart = createChart(
+                chartId,
+                type,
+                label,
+                borderColor,
+                isLine ? backgroundColor.replace('0.7', '0.1') : backgroundColor.replace('0.1', '0.7'),
+                {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                tooltipFormat: 'MMM d, yyyy HH:mm'
+                            },
+                            title: { display: true, text: 'Time', color: '#FFD700' },
+                            grid: { color: 'rgba(255, 215, 0, 0.1)' },
+                            ticks: { color: '#FFD700' }
+                        },
+                        y: {
+                            beginAtZero: !isLine,
+                            title: { display: true, text: 'Value', color: '#FFD700' },
+                            grid: { color: 'rgba(255, 215, 0, 0.1)' },
+                            ticks: { color: '#FFD700' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#FFD700' } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
+                            pan: { enabled: true, mode: 'xy' }
+                        }
+                    }
+                }
+            );
+
+            newChart.data.datasets[0].data = data;
+            newChart.update();
+
+            // Update the chart variable
+            switch(chartId) {
+                case 'tempChart':
+                    tempChart = newChart;
+                    chartZoomResetFunctions.tempChart = () => tempChart.resetZoom();
+                    break;
+                case 'pressureChart':
+                    pressureChart = newChart;
+                    chartZoomResetFunctions.pressureChart = () => pressureChart.resetZoom();
+                    break;
+                case 'vibrationChart':
+                    vibrationChart = newChart;
+                    chartZoomResetFunctions.vibrationChart = () => vibrationChart.resetZoom();
+                    break;
+                case 'speedChart':
+                    speedChart = newChart;
+                    chartZoomResetFunctions.speedChart = () => speedChart.resetZoom();
+                    break;
+            }
+        } catch (error) {
+            console.error(`Error toggling chart type for ${chartId}:`, error);
+        }
+    }
+
+    // Helper to get chart by ID
+    function getChartById(chartId) {
+        switch(chartId) {
+            case 'tempChart': return tempChart;
+            case 'pressureChart': return pressureChart;
+            case 'vibrationChart': return vibrationChart;
+            case 'speedChart': return speedChart;
+            case 'tiltChart': return tiltChart;
+            default: return null;
+        }
+    }
+
+    // Fetch historical data from MySQL with loading indicator
+    async function fetchHistoricalData() {
+        showLoading(true);
+        updateConnectionStatus('loading');
+        isLiveMode = false;
+        document.querySelector('.mode-btn[data-mode="history"]').classList.add('active');
+        document.querySelector('.mode-btn[data-mode="live"]').classList.remove('active');
+
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        if (!startDate || !endDate) {
+            console.error('Invalid date range');
+            updateConnectionStatus('error');
+            showLoading(false);
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `${backendUrl}/api/data/history?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (!Array.isArray(data)) {
+                throw new Error('Invalid data format received from server');
+            }
+
+            historicalData = data;
+            updateDashboardWithHistoricalData();
+            updateConnectionStatus('connected');
+
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            updateConnectionStatus('error');
+            logAlert('error', `Failed to load historical data: ${error.message}`);
+
+            // Fallback to WebSocket if available
+            if (stompClient && stompClient.connected) {
+                isLiveMode = true;
+                document.querySelector('.mode-btn[data-mode="live"]').classList.add('active');
+                document.querySelector('.mode-btn[data-mode="history"]').classList.remove('active');
+                updateConnectionStatus('connected-ws');
+            }
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // Show/hide loading overlay
+    function showLoading(show) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
+        }
+    }
+
+    // Update dashboard with historical data
+    function updateDashboardWithHistoricalData() {
+        if (!historicalData || historicalData.length === 0) {
+            console.warn("No historical data available");
+            document.getElementById('last-update').textContent = 'No data available for selected range';
+            logAlert('warning', 'No data available for selected time range');
+            return;
+        }
+
+        try {
+            // Sort data by timestamp (oldest first)
+            historicalData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            // Prepare datasets
+            const tempData = historicalData.map(item => ({
+                x: new Date(item.timestamp),
+                y: item.temperature
+            }));
+
+            const pressureData = historicalData.map(item => ({
+                x: new Date(item.timestamp),
+                y: item.pressure
+            }));
+
+            const vibrationData = historicalData.map(item => ({
+                x: new Date(item.timestamp),
+                y: item.vibration
+            }));
+
+            const speedData = historicalData.map(item => ({
+                x: new Date(item.timestamp),
+                y: item.speed
+            }));
+
+            const tiltData = historicalData.map(item => ({
+                x: new Date(item.timestamp),
+                y: item.tilt === "Tilt" ? 1 : 0
+            }));
+
+            // Update charts with complete historical data
+            tempChart.data.datasets[0].data = tempData;
+            pressureChart.data.datasets[0].data = pressureData;
+            vibrationChart.data.datasets[0].data = vibrationData;
+            speedChart.data.datasets[0].data = speedData;
+            tiltChart.data.datasets[0].data = tiltData;
+
+            // Update all charts
+            tempChart.update();
+            pressureChart.update();
+            vibrationChart.update();
+            speedChart.update();
+            tiltChart.update();
+
+            // Reset zoom on all charts
+            Object.values(chartZoomResetFunctions).forEach(resetFn => resetFn());
+
+            // Update latest values in summary cards
+            const latestData = historicalData[historicalData.length - 1];
+            updateSummaryCards(latestData);
+
+            // Update latest tilt indicator
+            updateTiltIndicator(latestData.tilt);
+
+            document.getElementById('last-update').textContent =
+                `Historical data loaded: ${new Date(latestData.timestamp).toLocaleString()}`;
+
+            // Check for alerts in historical data
+            checkHistoricalAlerts();
+        } catch (error) {
+            console.error('Error updating dashboard with historical data:', error);
+            logAlert('error', `Failed to display historical data: ${error.message}`);
+        }
+    }
+
+    // Check historical data for alerts
+    function checkHistoricalAlerts() {
+        if (!historicalData || historicalData.length === 0) return;
+
+        historicalData.forEach(data => {
+            checkForAlerts(data);
+        });
+    }
+
+    // Connection status visual feedback
+    function updateConnectionStatus(status) {
+        const statusElement = document.getElementById('connection-status');
+        if (!statusElement) return;
+
+        statusElement.className = `status-${status}`;
+        statusElement.textContent = {
+            'connected': '✓ Live (HTTP + WebSocket)',
+            'connected-ws': '✓ Live (WebSocket only)',
+            'loading': '⌛ Loading...',
+            'disconnected': '✖ Disconnected',
+            'error': '⚠ Connection Error'
+        }[status];
+    }
+
+    // Reset all charts to initial state
+    function resetCharts() {
+        tempChart.data.datasets[0].data = [];
+        pressureChart.data.datasets[0].data = [];
+        vibrationChart.data.datasets[0].data = [];
+        speedChart.data.datasets[0].data = [];
+        tiltChart.data.datasets[0].data = [];
+
+        tempChart.update();
+        pressureChart.update();
+        vibrationChart.update();
+        speedChart.update();
+        tiltChart.update();
+
+        // Reset summary cards
+        document.getElementById('currentTemp').textContent = '-- °C';
+        document.getElementById('currentPressure').textContent = '-- bar';
+        document.getElementById('currentVibration').textContent = '--';
+        document.getElementById('currentSpeed').textContent = '-- km/h';
+        document.getElementById('currentTilt').textContent = '--';
+
+        document.querySelectorAll('.trend').forEach(el => {
+            el.textContent = '--';
+            el.className = 'trend trend-neutral';
+        });
+
+        updateTiltIndicator("No Tilt");
+        document.getElementById('last-update').textContent = 'Data reset';
+    }
+
+    // Toggle between live and historical modes
+    function toggleMode(mode) {
+        isLiveMode = mode === 'live';
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`.mode-btn[data-mode="${mode}"]`).classList.add('active');
+
+        if (isLiveMode) {
+            updateConnectionStatus('connected');
+            document.getElementById('last-update').textContent = 'Switched to live mode';
+
+            // If we have WebSocket connection, start showing live data
+            if (stompClient && stompClient.connected) {
+                // Clear charts and let live data repopulate them
+                resetCharts();
+            }
+        } else {
+            fetchHistoricalData();
+        }
+    }
+
+    // Export data to CSV
+    function exportDataToCSV() {
+        if (!historicalData || historicalData.length === 0) {
+            alert('No data available to export');
+            return;
+        }
+
+        try {
+            // Prepare CSV header
+            let csv = 'Timestamp,Temperature (°C),Pressure (bar),Vibration,Speed (km/h),Tilt Status\n';
+
+            // Add data rows
+            historicalData.forEach(item => {
+                csv += `"${item.timestamp}",${item.temperature},${item.pressure},${item.vibration},${item.speed},"${item.tilt}"\n`;
+            });
+
+            // Create download link
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `tyre_data_${new Date().toISOString().slice(0,10)}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            logAlert('error', `Failed to export data: ${error.message}`);
+        }
+    }
+
+    // Initialize everything
+    document.addEventListener('DOMContentLoaded', function() {
+        initDateControls();
+        initCharts();
+        connectWebSocket();
+        updateAlertsDisplay();
+
+        // Set up event listeners
+        document.getElementById('applyBtn').addEventListener('click', fetchHistoricalData);
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            document.getElementById('dateRange').value = '7';
+            document.getElementById('customRangeGroup').style.display = 'none';
+            updateDefaultDates(7);
+            resetCharts();
+            toggleMode('live');
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', exportDataToCSV);
+
+        // Add event listeners for chart type toggles
+        document.querySelectorAll('.chart-type-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const chartId = this.dataset.chart;
+                const chartType = this.dataset.type;
+
+                // Update button states
+                document.querySelectorAll(`.chart-type-btn[data-chart="${chartId}"]`).forEach(b => {
+                    b.classList.remove('active');
+                });
+                this.classList.add('active');
+
+                // Toggle chart type
+                toggleChartType(chartId, chartType);
+            });
+        });
+
+        // Add event listeners for mode toggles
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                toggleMode(this.dataset.mode);
+            });
+        });
+
+        // Initial load
+        fetchHistoricalData();
+
+        // Add keyboard shortcut for resetting zoom (Ctrl+R)
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                Object.values(chartZoomResetFunctions).forEach(resetFn => resetFn());
+            }
+        });
+
+        // Performance optimization: throttle chart updates when tab is not visible
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                // Tab is hidden - reduce update frequency
+                tempChart.options.animation.duration = 0;
+                pressureChart.options.animation.duration = 0;
+                vibrationChart.options.animation.duration = 0;
+                speedChart.options.animation.duration = 0;
+                tiltChart.options.animation.duration = 0;
+            } else {
+                // Tab is visible - restore normal update frequency
+                tempChart.options.animation.duration = 0;
+                pressureChart.options.animation.duration = 0;
+                vibrationChart.options.animation.duration = 0;
+                speedChart.options.animation.duration = 0;
+                tiltChart.options.animation.duration = 0;
+            }
+        });
+    });
+</script>
+</body>
+</html>

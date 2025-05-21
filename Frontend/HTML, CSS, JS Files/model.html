@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Dumper Truck Model</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #1a1a1a; color: #1a1a1a; }
+.navbar {
+    background: #222;
+    display: flex;
+    flex-wrap: nowrap; /* Prevent wrapping */
+    overflow-x: auto;   /* Allow horizontal scroll on small screens */
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
+    padding: 15px;
+    box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+    z-index: 1003;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    scrollbar-width: none; /* Hide scrollbar in Firefox */
+}
+
+/* Hide scrollbar in Chrome/Safari */
+.navbar::-webkit-scrollbar {
+    display: none;
+}
+        .batman-font {
+            color: #FFD700; /* Yellow color for the h1 element */
+            font-family: 'Arial', sans-serif; /* Fallback font, adjust as needed */
+            text-align: center;
+            margin-top: 100px;
+            font-size: 2.2rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+.navbar a {
+    color: #FFD700;
+    text-decoration: none;
+    font-size: 18px;
+    padding: 10px 15px;
+    transition: 0.3s;
+    white-space: nowrap; /* Prevent text wrapping */
+    flex-shrink: 0;       /* Prevent links from shrinking */
+}
+
+.navbar a:hover {
+    background: #FFC107;
+    color: black;
+    border-radius: 5px;
+}
+
+
+        /* Header & Content Alignment */
+        header {
+            color: #FFD700;
+            margin-top: 80px;
+            text-align: center;
+        }
+
+        main {
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Model Container - Centering on Mobile */
+        #model-container {
+            width: 100vw;
+            height: 60vh; /* Increased height slightly */
+            margin-top: 10vh; /* Centered model vertically */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="dark-theme">
+<nav class="navbar">
+    <a href="fyp.html">Dashboard</a>
+    <a href="model.html">3D Model</a>
+    <a href="instructions.html">Maintenance Instructions</a>
+    <a href="analysis.html">Analysis</a>
+    <a href="data.html">TKPH Calculator</a>
+    <a href="output.html">Output</a>
+</nav>
+
+<header>
+    <h1 class="batman-font">Dumper Truck 3D Model</h1>
+</header>
+
+<main>
+    <div id="model-container"></div>
+</main>
+
+<script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / (window.innerHeight * 0.8), 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
+    // Adjust renderer size for mobile screens
+    renderer.setSize(window.innerWidth, window.innerHeight * 0.8);
+    document.getElementById("model-container").appendChild(renderer.domElement);
+
+    window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / (window.innerHeight * 0.8);
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight * 0.8);
+    });
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.1;
+    controls.rotateSpeed = 0.5;
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+    directionalLight.position.set(5, 10, 7.5).normalize();
+    scene.add(directionalLight);
+
+    const mtlLoader = new THREE.MTLLoader();
+    mtlLoader.load("truck.mtl", function (materials) {
+        materials.preload();
+        const objLoader = new THREE.OBJLoader();
+        objLoader.setMaterials(materials);
+        objLoader.load("truck.obj", function (object) {
+            console.log("OBJ file loaded successfully");
+
+            object.scale.set(100, 100, 100); // Adjusted scale to maintain shape
+            object.position.set(0, -20, 0); // Slightly raised position
+            object.rotation.y = Math.PI / 4; // Slight rotation for better viewing
+
+            scene.add(object);
+        }, function (xhr) {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        }, function (error) {
+            console.error("Error loading OBJ file:", error);
+            addFallbackCube();
+        });
+    }, function (error) {
+        console.error("Error loading MTL file:", error);
+        addFallbackCube();
+    });
+
+    // Adjusted camera position to avoid model compression
+    camera.position.set(0, 150, 400);
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    function addFallbackCube() {
+        console.log("Adding fallback cube...");
+        const geometry = new THREE.BoxGeometry(50, 50, 50);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+    }
+</script>
+
+<footer>
+    <p>&copy; 2025 Dumper Truck Maintenance - "Even the Batmobile needs maintenance!" 🦇</p>
+</footer>
+</body>
+</html>
